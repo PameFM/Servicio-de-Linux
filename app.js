@@ -1,4 +1,4 @@
-// Probando actualización automática
+// Cambios de prueba para update automático
 const express = require('express')
 const app = express()
 const port = 3000
