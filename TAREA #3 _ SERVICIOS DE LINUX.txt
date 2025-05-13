@@ -1,0 +1,138 @@
+DOCUMENTACIÓN DEL PASO #1
+Instalación en NodeJS
+1. Al instalar NodeJS y brindó el siguiente mensaje Package "nodejs-1:22.14.0-2.fc42.x86_64" is already installed.
+
+Instalación de Express
+1. Se creó un directorio llamado myapp y se accedió al mismo.
+2. Dentro de la carpeta, se ejecutó el comando npm init, aceptando los valores predeterminados presionando ENTER en todas las opciones.
+3. Se instaló Express ejecutando el comando npm install express dentro de la carpeta myapp.
+4. Se creó un archivo llamado app.js con el siguiente código:
+	const express = require('express')
+	const app = express()
+	const port = 3000
+
+	app.get('/', (req, res) => {
+	  res.send('Hello World!')
+	})
+
+	app.listen(port, () => {
+	  console.log(`Example app listening on port ${port}`)
+	})
+
+Este código inicia un servidor en el puerto 3000 que:
+	- Responde con "¡Hola mundo!" a las solicitudes en la ruta raíz (/).
+	- Retorna un error 404 ("No encontrado") para cualquier otra ruta.
+5. Se inició el servidor con el comando node app.js.
+6. Se verificó el resultado accediendo a http://localhost:3000/ en el navegador.
+
+Links de referencia para la instalación 
+- https://developer.fedoraproject.org/tech/languages/nodejs/nodejs.html
+- https://expressjs.com/es/starter/installing.html
+- https://expressjs.com/es/starter/hello-world.html
+
+
+
+DOCUMENTACIÓN DEL PASO #2
+1. Luego de reiniciar la computadora, la aplicación Node.js no se ejecutó automáticamente. Al intentar acceder a localhost:3000, el navegador no respondió. Esto indica que el programa no está configurado aún como un servicio persistente.
+
+
+
+DOCUMENTACIÓN DEL PASO #3
+1. Crear el archivo para el servicio unit con sudo nano /etc/systemd/system/nodeapp.service
+2. Dentro del archivo se colocó el siguiente código:
+	[Unit]
+	Description=Node.js HelloWorld App
+	After=network.target
+
+	[Service]
+	ExecStart=/usr/bin/node /home/pamela/myapp/app.js
+	WorkingDirectory=/home/pamela/myapp
+	Restart=always
+	User=pamela
+	Environment=NODE_ENV=production
+	Environment=PATH=/usr/bin:/bin
+
+	[Install]
+	WantedBy=multi-user.target
+
+Este código se tiene que modificar de acuerdo a la máquina donde se ejecute:
+	- /home/pamela/myapp/ Se modifica de acuerdo a la dirección donde se encuentra el archivo app.js
+	- User=pamela Se coloca el nombre del usuario con la sesión iniciado en Fedora
+3. Se ejecutan los siguientes comandos para que el nuevo servicio comience a funcionar:
+	- sudo systemctl daemon-reexec
+	- sudo systemctl daemon-reload
+	- sudo systemctl enable nodeapp
+	- sudo systemctl start nodeapp
+4. Para verificar el estado del servicio se puede hacer mediante el siguiente comando: 
+	- sudo systemctl status nodeapp
+5. Se reinicia la computadora y se prueba si el servicio funcionó ya sea colocando en el navegador http://localhost:3000 o en consola curl http://localhost:3000
+6. Luego de reiniciar la computadora, la aplicación Node.js se ejecutó automáticamente. Al acceder a localhost:3000, el navegador respondió con el Hello World! esperado.
+
+
+
+DOCUMENTACIÓN DEL PASO #4
+1. Inicializar git en la carpeta del proyecto nombrada myapp
+	- cd /home/tuUsuario/myapp
+	- git init
+	- git config --global user.name "tuUsuario"
+	- git config --global user.email "tuEmail.com"
+	- git add .
+	- git commit -m "Initial commit"
+2. Luego hacer el repositorio en GitHub.
+3. Se agrega el remoto y se sube al repositorio: 
+	- git remote add origin https://github.com/tu_usuario/tu_repositorio
+	- git branch -M main
+	- git push origin main
+4. Se crea la rama deployment:
+	- git checkout -b deployment
+	- git push -u origin deployment
+
+
+
+DOCUMENTACIÓN DEL PASO #5
+1. Se crea un script en la carpeta del proyecto nombrado update-and-restart.sh con el siguiente contenido: 
+	#!/usr/bin/bash
+	cd /home/pamela/myapp || exit 1
+
+	# Obtener los últimos cambios de la rama Deployment
+	git fetch origin deployment
+
+	# Verificar si hay cambios
+	LOCAL=$(git rev-parse deployment)
+	REMOTE=$(git rev-parse origin/deployment)
+
+	if [ "$LOCAL" != "$REMOTE" ]; then
+	  echo "Cambios detectados en la rama Deployment. Actualizando..."
+	  git reset --hard origin/deployment
+	  sudo /bin/systemctl restart nodeapp.service
+	else
+	  echo "No hay cambios en la rama Deployment."
+	fi
+2. Asegurarse de darle permisos de ejecución al script: 
+	- chmod +x /home/pamela/myapp/update-and-restart.sh
+3. Se crea el servicio que verifica si existen cambios en la rama Deployment y si existen los actualice en la versión local: 
+	[Unit]
+	Description=Actualizador manual de rama Deployment en GitHub
+	After=network.target
+
+	[Service]
+	Type=oneshot
+	WorkingDirectory=/home/pamela/myapp
+	ExecStart=/usr/bin/bash /home/pamela/myapp/update-and-restart.sh
+4. Se recarga systemd para aplicar los cambios:
+	- sudo systemctl daemon-reexec
+	- sudo systemctl daemon-reload
+5. Se ejecuta el servicio de forma manual:
+	- sudo systemctl start nodeupdater
+	- sudo systemctl status nodeupdater
+6. Nota: Si Git está bloqueando la operación porque detecta que el directorio del repositorio tiene una propiedad de usuario dudosa, añadir explícitamente el repositorio a la lista de directorios seguros de Git el directorio dell proyecto: 
+	- Añadir el directorio: sudo git config --system --add safe.directory /home/pamela/myapp
+	- Verificar que se añadió: sudo git config --system --get-all safe.directory
+
+
+
+
+
+
+
+
